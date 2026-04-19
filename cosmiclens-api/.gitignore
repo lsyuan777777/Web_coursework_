@@ -61,13 +61,11 @@ logs/
 Thumbs.db
 
 # Data files
-data/*.csv
 data/*.zip
-!data/sample_data.csv
 
-# API documentation (generated)
-docs/API_DOCUMENTATION.pdf
-docs/TECHNICAL_REPORT.pdf
+# API documentation
+# docs/API_DOCUMENTATION.pdf
+# docs/TECHNICAL_REPORT.pdf
 
 # Coverage
 htmlcov/
