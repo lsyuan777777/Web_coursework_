@@ -1,4 +1,4 @@
-![1776601548569](image/README/1776601548569.png)![1776601553091](image/README/1776601553091.png)![1776601558981](image/README/1776601558981.png)![1776601560384](image/README/1776601560384.png)![1776602021066](image/README/1776602021066.png)# CosmicLens
+CosmicLens
 
 A web application for exploring NASA's Astronomy Picture of the Day (APOD) dataset - featuring 30+ years of cosmic imagery and scientific explanations.
 
@@ -31,7 +31,6 @@ Web_coursework_/
 ### Prerequisites
 
 - **Python 3.9+** installed
-- **Internet connection** (for fetching NASA APOD data)
 
 ### 1. Install Dependencies
 
@@ -40,34 +39,9 @@ cd cosmiclens-api
 pip install -r requirements.txt
 ```
 
-### 2. Download Dataset (Optional)
+### 2. Start the API Server
 
-To populate the database with NASA APOD data:
-
-1. Download the dataset from Kaggle:
-   https://www.kaggle.com/datasets/ahsanneural/nasa-astronomy-picture-of-the-day-1995-2026
-2. Place the CSV file (`nasa_apod.csv`) in the `cosmiclens-api/data/` directory
-
-### 3. Initialize Database
-
-```bash
-cd cosmiclens-api
-python -m app.scripts.init_db
-```
-
-This will:
-- Create the SQLite database
-- Import data from CSV (if available)
-- Show database statistics
-
-Additional database commands:
-```bash
-python -m app.scripts.init_db status    # Show database status
-python -m app.scripts.init_db clear     # Clear all data
-python -m app.scripts.init_db reset     # Reset database
-```
-
-### 4. Start the API Server
+The database is pre-populated with NASA APOD data, so no additional setup is needed.
 
 ```bash
 cd cosmiclens-api
@@ -79,7 +53,7 @@ API will be available at:
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
-### 5. Start the Frontend
+### 3. Start the Frontend
 
 **Option A: Using Python's HTTP server**
 ```bash
@@ -108,27 +82,19 @@ cd /path/to/Web_coursework_
 cd cosmiclens-api
 pip install -r requirements.txt
 
-# 3. Download NASA APOD dataset from Kaggle
-# https://www.kaggle.com/datasets/ahsanneural/nasa-astronomy-picture-of-the-day-1995-2026
-# Place the downloaded CSV file as: cosmiclens-api/data/nasa_apod.csv
-
-# 4. Initialize database and import data
-python -m app.scripts.init_db
-
-# 5. Start API server (keep this terminal open)
+# 3. Start API server (keep this terminal open)
 python manage.py server
 
-# 6. In a new terminal, start frontend
+# 4. In a new terminal, start frontend
 cd cosmiclens-frontend
 python3 -m http.server 3000
 
-# 7. Open browser: http://localhost:3000
+# 5. Open browser: http://localhost:3000
 ```
 
 ### Troubleshooting
 
 - **API connection error**: Make sure the API server is running on port 8000
-- **No data displayed**: Run `python -m app.scripts.init_db` to import data
 - **Port already in use**: Change the port number in the command (e.g., `python3 -m http.server 8080`)
 
 ## Features

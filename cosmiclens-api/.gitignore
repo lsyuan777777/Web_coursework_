@@ -48,9 +48,7 @@ env/
 .env.*.local
 
 # Database
-*.db
-*.sqlite
-*.sqlite3
+# cosmiclens.db is included for pre-populated data
 
 # Logs
 *.log
