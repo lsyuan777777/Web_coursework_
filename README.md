@@ -1,5 +1,3 @@
-![1776603684299](image/README/1776603684299.png)CosmicLens
-
 A web application for exploring NASA's Astronomy Picture of the Day (APOD) dataset - featuring 30+ years of cosmic imagery and scientific explanations.
 
 ## Project Structure
