@@ -746,7 +746,7 @@
     <!-- Stars Background -->
     <div class="stars" id="stars"></div>
 
-    <!-- Navigation -->
+        <!-- Navigation -->
     <nav>
         <div class="nav-content">
             <a href="#" class="logo">
@@ -760,15 +760,18 @@
                 </div>
                 CosmicLens
             </a>
-            <div class="nav-links">
-                <button class="nav-link active" data-view="gallery">Gallery</button>
-                <button class="nav-link" data-view="random">Random</button>
-                <button class="nav-link" data-view="collections" id="collectionsBtn">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
-                        <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                    </svg>
-                    Collections
-                </button>
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div id="connectionStatus" style="font-size: 0.75rem; color: var(--text-muted);">Connecting...</div>
+                <div class="nav-links">
+                    <button class="nav-link active" data-view="gallery">Gallery</button>
+                    <button class="nav-link" data-view="random">Random</button>
+                    <button class="nav-link" data-view="collections" id="collectionsBtn">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
+                            <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                        </svg>
+                        Collections
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
@@ -913,7 +916,7 @@
 
     <script>
         // Configuration
-        const API_BASE = 'http://localhost:8000/api/v1';
+        const API_BASE = 'http://localhost:8001/api/v1';
 
         // State
         let currentPage = 1;
@@ -939,12 +942,31 @@
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             createStars();
+            checkConnection();
             loadStats();
             loadYears();
             loadPictures();
             loadCollections();
             setupEventListeners();
         });
+
+        // Check API connection
+        async function checkConnection() {
+            const statusEl = document.getElementById('connectionStatus');
+            try {
+                const response = await fetch(`${API_BASE}/pictures?page=1&page_size=1`);
+                if (response.ok) {
+                    statusEl.textContent = '✓ Connected';
+                    statusEl.style.color = 'var(--success)';
+                } else {
+                    statusEl.textContent = '✗ API Error';
+                    statusEl.style.color = 'var(--error)';
+                }
+            } catch (error) {
+                statusEl.textContent = '✗ Offline';
+                statusEl.style.color = 'var(--error)';
+            }
+        }
 
         // Create star background
         function createStars() {
@@ -964,12 +986,15 @@
         // API Functions
         async function fetchAPI(endpoint) {
             try {
+                console.log('Fetching:', `${API_BASE}${endpoint}`);
                 const response = await fetch(`${API_BASE}${endpoint}`);
-                if (!response.ok) throw new Error('API request failed');
-                return await response.json();
+                if (!response.ok) throw new Error(`API error: ${response.status}`);
+                const data = await response.json();
+                console.log('API Response:', data);
+                return data;
             } catch (error) {
                 console.error('API Error:', error);
-                showToast('Failed to connect to API. Make sure the server is running.', 'error');
+                showToast('Failed to connect to API. Make sure the server is running on port 8000.', 'error');
                 return null;
             }
         }
@@ -1019,8 +1044,12 @@
             showLoading(false);
 
             if (data) {
-                totalPages = data.total_pages || 1;
-                renderPictures(data.items || []);
+                // Handle both paginated response and direct array response
+                const pictures = Array.isArray(data) ? data : (data.items || data);
+                const total = data.total || pictures.length;
+                const pageSize = data.page_size || 12;
+                totalPages = Math.ceil(total / pageSize) || 1;
+                renderPictures(pictures);
                 renderPagination();
             }
         }

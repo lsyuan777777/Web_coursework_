@@ -101,13 +101,30 @@ def search_pictures(
     )
 
 
-@router.get("/{picture_id}", response_model=AstronomyPictureResponse)
-def get_picture(picture_id: int, db: Session = Depends(get_db)):
-    """Get a specific astronomy picture by ID."""
-    picture = db.query(AstronomyPicture).filter(AstronomyPicture.id == picture_id).first()
-    if not picture:
-        raise HTTPException(status_code=404, detail="Picture not found")
+@router.get("/random", response_model=AstronomyPictureResponse)
+def get_random_picture(db: Session = Depends(get_db)):
+    """Get a random astronomy picture"""
+    import random
+    count = db.query(AstronomyPicture).count()
+    if count == 0:
+        raise HTTPException(status_code=404, detail="No pictures in database")
+
+    offset_val = random.randint(0, count - 1)
+    picture = db.query(AstronomyPicture).offset(offset_val).limit(1).first()
+
     return AstronomyPictureResponse.from_orm_with_keywords(picture)
+
+
+@router.get("/stats/years")
+def get_years_with_pictures(db: Session = Depends(get_db)):
+    """Get list of years that have pictures"""
+    from sqlalchemy import func
+    years = db.query(
+        AstronomyPicture.year,
+        func.count(AstronomyPicture.id).label('count')
+    ).group_by(AstronomyPicture.year).order_by(AstronomyPicture.year.desc()).all()
+
+    return [{"year": y.year, "count": y.count} for y in years]
 
 
 @router.get("/date/{target_date}", response_model=AstronomyPictureResponse)
@@ -116,6 +133,15 @@ def get_picture_by_date(target_date: date, db: Session = Depends(get_db)):
     picture = db.query(AstronomyPicture).filter(AstronomyPicture.date == target_date).first()
     if not picture:
         raise HTTPException(status_code=404, detail=f"No picture found for date {target_date}")
+    return AstronomyPictureResponse.from_orm_with_keywords(picture)
+
+
+@router.get("/{picture_id}", response_model=AstronomyPictureResponse)
+def get_picture(picture_id: int, db: Session = Depends(get_db)):
+    """Get a specific astronomy picture by ID."""
+    picture = db.query(AstronomyPicture).filter(AstronomyPicture.id == picture_id).first()
+    if not picture:
+        raise HTTPException(status_code=404, detail="Picture not found")
     return AstronomyPictureResponse.from_orm_with_keywords(picture)
 
 
@@ -183,29 +209,3 @@ def delete_picture(picture_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return None
-
-
-@router.get("/stats/years")
-def get_years_with_pictures(db: Session = Depends(get_db)):
-    """Get list of years that have pictures"""
-    from sqlalchemy import func
-    years = db.query(
-        AstronomyPicture.year,
-        func.count(AstronomyPicture.id).label('count')
-    ).group_by(AstronomyPicture.year).order_by(AstronomyPicture.year.desc()).all()
-
-    return [{"year": y.year, "count": y.count} for y in years]
-
-
-@router.get("/random", response_model=AstronomyPictureResponse)
-def get_random_picture(db: Session = Depends(get_db)):
-    """Get a random astronomy picture"""
-    import random
-    count = db.query(AstronomyPicture).count()
-    if count == 0:
-        raise HTTPException(status_code=404, detail="No pictures in database")
-
-    offset_val = random.randint(0, count - 1)
-    picture = db.query(AstronomyPicture).offset(offset_val).limit(1).first()
-
-    return AstronomyPictureResponse.from_orm_with_keywords(picture)
