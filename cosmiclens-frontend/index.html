@@ -712,6 +712,97 @@
             border-color: var(--error);
         }
 
+        /* Add to Collection Modal */
+        .select-collection-modal {
+            max-width: 500px;
+        }
+
+        .select-collection-modal .modal-body {
+            padding: 1.5rem;
+        }
+
+        .collection-option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background: var(--bg-card);
+            border-radius: 12px;
+            margin-bottom: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .collection-option:hover {
+            border-color: var(--accent);
+            background: var(--bg-hover);
+        }
+
+        .collection-option.selected {
+            border-color: var(--accent);
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .collection-option-info {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .collection-option-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .collection-option-count {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .confirm-add-btn {
+            width: 100%;
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .confirm-add-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        .confirm-add-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .back-to-collections {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1rem;
+            background: var(--bg-card);
+            border: none;
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            transition: all 0.2s;
+        }
+
+        .back-to-collections:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
         /* Responsive */
         @media (max-width: 768px) {
             .hero h1 {
@@ -765,7 +856,7 @@
                 <div class="nav-links">
                     <button class="nav-link active" data-view="gallery">Gallery</button>
                     <button class="nav-link" data-view="random">Random</button>
-                    <button class="nav-link" data-view="collections" id="collectionsBtn">
+                    <button class="nav-link" id="collectionsBtn">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px;">
                             <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
                         </svg>
@@ -807,6 +898,14 @@
 
             <!-- Search Section -->
             <section class="search-section" id="searchSection">
+                <div id="backFromCollectionBtn" style="display: none; margin-bottom: 1rem;">
+                    <button class="back-to-collections" onclick="backFromCollectionView()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M19 12H5M12 19l-7-7 7-7"/>
+                        </svg>
+                        Back to Gallery
+                    </button>
+                </div>
                 <div class="search-container">
                     <input type="text" class="search-input" id="searchInput" placeholder="Search pictures by title, keywords...">
                     <select class="filter-select" id="mediaTypeFilter">
@@ -896,18 +995,30 @@
     <!-- Collections Panel -->
     <div class="collections-panel" id="collectionsPanel">
         <div class="panel-header">
-            <h2>My Collections</h2>
+            <h2 id="collectionsPanelTitle">My Collections</h2>
             <button class="panel-close" id="panelClose">&times;</button>
         </div>
-        <div class="panel-content">
-            <button class="new-collection-btn" id="newCollectionBtn">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="12" y1="5" x2="12" y2="19"/>
-                    <line x1="5" y1="12" x2="19" y2="12"/>
-                </svg>
-                Create New Collection
-            </button>
-            <div id="collectionsList"></div>
+        <div class="panel-content" id="collectionsContent">
+            <!-- Content will be dynamically rendered -->
+        </div>
+    </div>
+
+    <!-- Select Collection Modal -->
+    <div class="modal-overlay" id="selectCollectionModal">
+        <div class="modal select-collection-modal">
+            <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid var(--border);">
+                <h2 style="font-size: 1.25rem; font-weight: 600;">Add to Collection</h2>
+                <button class="modal-close" onclick="closeSelectCollectionModal()" style="position: static; background: var(--bg-hover);">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p style="color: var(--text-secondary); margin-bottom: 1rem; font-size: 0.875rem;">
+                    Select a collection to add this picture:
+                </p>
+                <div id="collectionOptions"></div>
+                <button class="confirm-add-btn" id="confirmAddBtn" disabled onclick="confirmAddToCollection()">
+                    Add to Collection
+                </button>
+            </div>
         </div>
     </div>
 
@@ -924,6 +1035,8 @@
         let currentView = 'gallery';
         let selectedPicture = null;
         let collections = [];
+        let currentCollectionView = null; // null = collections list, id = viewing specific collection
+        let selectedCollectionId = null;
 
         // DOM Elements
         const galleryGrid = document.getElementById('galleryGrid');
@@ -1150,24 +1263,301 @@
         }
 
         function renderCollections() {
-            const list = document.getElementById('collectionsList');
-            list.innerHTML = '';
+            const content = document.getElementById('collectionsContent');
+            const title = document.getElementById('collectionsPanelTitle');
 
-            if (collections.length === 0) {
-                list.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No collections yet</p>';
+            if (currentCollectionView === null) {
+                // Show collections list with create option
+                title.textContent = 'My Collections';
+                content.innerHTML = `
+                    <button class="new-collection-btn" id="newCollectionBtn" onclick="showCreateCollectionForm()">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        Create New Collection
+                    </button>
+                    <div id="collectionsList"></div>
+                `;
+
+                // Render collections list
+                const list = document.getElementById('collectionsList');
+                if (collections.length === 0) {
+                    list.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No collections yet.<br>Create your first collection!</p>';
+                    return;
+                }
+
+                collections.forEach(col => {
+                    const item = document.createElement('div');
+                    item.className = 'collection-item';
+                    item.innerHTML = `
+                        <h3>${col.name}</h3>
+                        <p>${col.picture_count || 0} pictures</p>
+                    `;
+                    item.onclick = () => viewCollection(col.id);
+                    list.appendChild(item);
+                });
+            } else {
+                // Show specific collection content
+                renderCollectionContent();
+            }
+        }
+
+        function showCreateCollectionForm() {
+            const content = document.getElementById('collectionsContent');
+            content.innerHTML = `
+                <button class="back-to-collections" onclick="backToCollections()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back to Collections
+                </button>
+                <div class="form-group">
+                    <label class="form-label">Collection Name</label>
+                    <input type="text" class="form-input" id="newCollectionName" placeholder="Enter collection name...">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description (optional)</label>
+                    <input type="text" class="form-input" id="newCollectionDesc" placeholder="Enter description...">
+                </div>
+                <button class="btn" style="width: 100%;" onclick="createCollection()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                    Create Collection
+                </button>
+            `;
+        }
+
+        async function createCollection() {
+            const name = document.getElementById('newCollectionName').value.trim();
+            const description = document.getElementById('newCollectionDesc').value.trim();
+
+            if (!name) {
+                showToast('Please enter a collection name', 'error');
                 return;
             }
 
-            collections.forEach(col => {
-                const item = document.createElement('div');
-                item.className = 'collection-item';
-                item.innerHTML = `
-                    <h3>${col.name}</h3>
-                    <p>${col.picture_count || 0} pictures</p>
+            try {
+                const response = await fetch(`${API_BASE}/collections`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name,
+                        description: description || '',
+                        is_public: true
+                    })
+                });
+
+                if (response.ok) {
+                    showToast('Collection created!');
+                    await loadCollections();
+                    backToCollections();
+                } else {
+                    showToast('Failed to create collection', 'error');
+                }
+            } catch (error) {
+                showToast('Error creating collection', 'error');
+            }
+        }
+
+        function backToCollections() {
+            currentCollectionView = null;
+            renderCollections();
+        }
+
+        async function renderCollectionContent() {
+            const content = document.getElementById('collectionsContent');
+            const title = document.getElementById('collectionsPanelTitle');
+
+            // Find collection info
+            const collection = collections.find(c => c.id === currentCollectionView);
+            if (collection) {
+                title.textContent = collection.name;
+            }
+
+            content.innerHTML = `
+                <button class="back-to-collections" onclick="backToCollections()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7"/>
+                    </svg>
+                    Back to Collections
+                </button>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <span style="color: var(--text-muted); font-size: 0.875rem;">${collection ? (collection.picture_count || 0) : 0} pictures</span>
+                    <button class="btn btn-secondary" style="padding: 0.5rem 0.75rem; font-size: 0.75rem;" onclick="deleteCollection(${currentCollectionView})">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                        Delete
+                    </button>
+                </div>
+                <div id="collectionPicturesList">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <span>Loading pictures...</span>
+                    </div>
+                </div>
+            `;
+
+            // Load collection pictures
+            const data = await fetchAPI(`/collections/${currentCollectionView}`);
+            const picturesList = document.getElementById('collectionPicturesList');
+
+            if (data && data.pictures && data.pictures.length > 0) {
+                picturesList.innerHTML = '';
+                data.pictures.forEach(pic => {
+                    const item = document.createElement('div');
+                    item.className = 'collection-item';
+                    item.style.display = 'flex';
+                    item.style.alignItems = 'center';
+                    item.style.justifyContent = 'space-between';
+                    item.innerHTML = `
+                        <div style="display: flex; align-items: center; gap: 1rem; flex: 1; cursor: pointer;" onclick="viewPictureInCollection(${pic.id})">
+                            <img src="${pic.media_url}" style="width: 60px; height: 60px; object-fit: cover; border-radius: 8px;" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect fill=%22%231a1a25%22 width=%22100%22 height=%22100%22/><text x=%2250%22 y=%2255%22 text-anchor=%22middle%22 fill=%22%236b7280%22 font-size=%2240%22>?</text></svg>'">
+                            <div>
+                                <h3 style="font-size: 0.9rem;">${pic.title}</h3>
+                                <p style="font-size: 0.75rem;">${pic.date}</p>
+                            </div>
+                        </div>
+                        <button class="btn btn-secondary" style="padding: 0.5rem; min-width: auto;" onclick="removeFromCollection(${currentCollectionView}, ${pic.id})">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
+                    `;
+                    picturesList.appendChild(item);
+                });
+            } else {
+                picturesList.innerHTML = '<p style="text-align: center; color: var(--text-muted); padding: 2rem;">No pictures in this collection yet.</p>';
+            }
+        }
+
+        async function viewPictureInCollection(pictureId) {
+            const data = await fetchAPI(`/pictures/${pictureId}`);
+            if (data) {
+                closeCollectionsPanel();
+                openModal(data);
+            }
+        }
+
+        async function removeFromCollection(collectionId, pictureId) {
+            if (!confirm('Remove this picture from collection?')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/collections/${collectionId}/pictures/${pictureId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok || response.status === 204) {
+                    showToast('Picture removed from collection');
+                    await loadCollections();
+                    renderCollectionContent();
+                } else {
+                    showToast('Failed to remove picture', 'error');
+                }
+            } catch (error) {
+                showToast('Error removing picture', 'error');
+            }
+        }
+
+        async function deleteCollection(collectionId) {
+            if (!confirm('Delete this collection? Pictures will not be deleted.')) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/collections/${collectionId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok || response.status === 204) {
+                    showToast('Collection deleted');
+                    await loadCollections();
+                    backToCollections();
+                } else {
+                    showToast('Failed to delete collection', 'error');
+                }
+            } catch (error) {
+                showToast('Error deleting collection', 'error');
+            }
+        }
+
+        // Select Collection Modal Functions
+        function openSelectCollectionModal() {
+            if (!selectedPicture) return;
+
+            selectedCollectionId = null;
+            document.getElementById('confirmAddBtn').disabled = true;
+            renderCollectionOptions();
+            document.getElementById('selectCollectionModal').classList.add('active');
+        }
+
+        function closeSelectCollectionModal() {
+            document.getElementById('selectCollectionModal').classList.remove('active');
+            selectedCollectionId = null;
+        }
+
+        function renderCollectionOptions() {
+            const container = document.getElementById('collectionOptions');
+
+            if (collections.length === 0) {
+                container.innerHTML = `
+                    <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        No collections yet.<br>
+                        <button class="btn" style="margin-top: 1rem;" onclick="closeSelectCollectionModal(); collectionsPanel.classList.add('active'); showCreateCollectionForm();">
+                            Create Collection
+                        </button>
+                    </p>
                 `;
-                item.onclick = () => viewCollection(col.id);
-                list.appendChild(item);
-            });
+                return;
+            }
+
+            container.innerHTML = collections.map(col => `
+                <div class="collection-option ${selectedCollectionId === col.id ? 'selected' : ''}" onclick="selectCollection(${col.id})">
+                    <div class="collection-option-info">
+                        <span class="collection-option-name">${col.name}</span>
+                        <span class="collection-option-count">${col.picture_count || 0} pictures</span>
+                    </div>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity: ${selectedCollectionId === col.id ? '1' : '0'}; color: var(--accent);">
+                        <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                </div>
+            `).join('');
+        }
+
+        function selectCollection(collectionId) {
+            selectedCollectionId = collectionId;
+            document.getElementById('confirmAddBtn').disabled = false;
+            renderCollectionOptions();
+        }
+
+        async function confirmAddToCollection() {
+            if (!selectedPicture || !selectedCollectionId) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/collections/${selectedCollectionId}/pictures`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ picture_id: selectedPicture.id })
+                });
+
+                if (response.ok) {
+                    const collection = collections.find(c => c.id === selectedCollectionId);
+                    showToast(`Added to "${collection?.name || 'collection'}"!`);
+                    await loadCollections();
+                    closeSelectCollectionModal();
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Failed to add to collection', 'error');
+                }
+            } catch (error) {
+                showToast('Error adding to collection', 'error');
+            }
+        }
+
+        function closeCollectionsPanel() {
+            collectionsPanel.classList.remove('active');
         }
 
         function openModal(picture) {
@@ -1250,25 +1640,18 @@
                 if (e.target === modalOverlay) closeModal();
             };
 
-            // Collections
-            collectionsBtn.onclick = () => collectionsPanel.classList.add('active');
+            // Collections Panel
+            collectionsBtn.onclick = () => {
+                currentCollectionView = null;
+                renderCollections();
+                collectionsPanel.classList.add('active');
+            };
             panelClose.onclick = () => collectionsPanel.classList.remove('active');
 
-            // Add to collection
-            document.getElementById('addToCollectionBtn').onclick = async () => {
-                if (!selectedPicture || collections.length === 0) {
-                    showToast('Create a collection first', 'error');
-                    collectionsPanel.classList.add('active');
-                    return;
-                }
-                // For simplicity, add to first collection
-                const colId = collections[0].id;
-                await fetch(`${API_BASE}/collections/${colId}/pictures`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ picture_id: selectedPicture.id })
-                });
-                showToast('Added to collection!');
+            // Add to collection - now opens modal to select collection
+            document.getElementById('addToCollectionBtn').onclick = () => {
+                closeModal();
+                openSelectCollectionModal();
             };
 
             // Navigation
@@ -1286,42 +1669,42 @@
                 };
             });
 
-            // New collection
-            document.getElementById('newCollectionBtn').onclick = async () => {
-                const name = prompt('Collection name:');
-                if (!name) return;
+            // Navigation
+            document.querySelectorAll('.nav-link[data-view]').forEach(link => {
+                link.onclick = () => {
+                    document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+                    link.classList.add('active');
+                    currentView = link.dataset.view;
 
-                const response = await fetch(`${API_BASE}/collections`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        name,
-                        description: '',
-                        is_public: true
-                    })
-                });
-
-                if (response.ok) {
-                    showToast('Collection created!');
-                    loadCollections();
-                }
-            };
+                    if (currentView === 'random') {
+                        loadRandomPicture();
+                    } else {
+                        loadPictures(1);
+                    }
+                };
+            });
 
             // Keyboard
             document.onkeydown = (e) => {
-                if (e.key === 'Escape') closeModal();
+                if (e.key === 'Escape') {
+                    closeModal();
+                    closeSelectCollectionModal();
+                    closeCollectionsPanel();
+                }
             };
         }
 
         async function viewCollection(colId) {
-            showLoading(true);
-            const data = await fetchAPI(`/collections/${colId}/pictures`);
-            showLoading(false);
+            currentCollectionView = colId;
+            document.getElementById('backFromCollectionBtn').style.display = 'block';
+            renderCollections();
+        }
 
-            if (data && data.pictures) {
-                renderPictures(data.pictures);
-                document.getElementById('searchSection').style.display = 'none';
-            }
+        function backFromCollectionView() {
+            currentCollectionView = null;
+            document.getElementById('backFromCollectionBtn').style.display = 'none';
+            document.getElementById('searchSection').querySelector('.search-container').style.display = 'flex';
+            loadPictures(1);
         }
     </script>
 </body>
