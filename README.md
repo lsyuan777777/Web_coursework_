@@ -92,8 +92,40 @@ python3 -m http.server 3000
 
 ### Troubleshooting
 
+#### Python Architecture Compatibility Error (Apple Silicon Macs)
+
+If you encounter an error like:
+```
+ImportError: dlopen(...pydantic_core.cpython-312-darwin.so... 
+mach-o file, but is an incompatible architecture (have 'arm64', need 'x86_64')
+```
+
+This occurs when Python's architecture doesn't match installed binary packages. **Solution:**
+
+```bash
+# 1. Remove any existing virtual environment
+cd cosmiclens-api
+rm -rf venv
+
+# 2. Create a new virtual environment (ensure it uses arm64 Python on Apple Silicon)
+python3 -m venv venv
+
+# 3. Activate it
+source venv/bin/activate
+
+# 4. Install dependencies
+pip install -r requirements.txt
+```
+
+> **Note**: On Apple Silicon Macs, make sure you're using the arm64 version of Python (built-in `python3`), not an x86_64 installation via Rosetta.
+
+---
+
+#### Other Issues
+
 - **API connection error**: Make sure the API server is running on port 8000
 - **Port already in use**: Change the port number in the command (e.g., `python3 -m http.server 8080`)
+- **Package version conflicts**: Delete `venv/` and reinstall following the steps above
 
 ## Features
 
