@@ -359,7 +359,7 @@ The implementation exceeds the minimum requirements and provides a solid foundat
 
 ## Appendix B: GitHub Repository
 
-**Repository**: https://github.com/[username]/cosmiclens-api
+**Repository**: https://github.com/lsyuan777777/Web_coursework_
 
 **Contents**:
 - Source code with complete commit history
