@@ -1,4 +1,4 @@
-![1776774889010](image/README/1776774889010.png)A web application for exploring NASA's Astronomy Picture of the Day (APOD) dataset - featuring 30+ years of cosmic imagery and scientific explanations.
+A web application for exploring NASA's Astronomy Picture of the Day (APOD) dataset - featuring 30+ years of cosmic imagery and scientific explanations.
 
 ## Project Structure
 
