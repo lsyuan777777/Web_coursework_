@@ -546,7 +546,9 @@ curl -X GET "http://localhost:8000/api/v1/auth/me" \
 
 ### Logout
 
-Log out the current user. Note: JWT tokens are stateless, so the server doesn't actually invalidate the token. The client should remove the token from local storage.
+Log out the current user by revoking the token. The token will be added to a blacklist, preventing reuse.
+
+**Note:** Each token can only be used for logout once. If you attempt to logout with an already-revoked token, you will receive a 401 error.
 
 **Endpoint**: `POST /api/v1/auth/logout`
 
@@ -567,6 +569,10 @@ curl -X POST "http://localhost:8000/api/v1/auth/logout" \
   "message": "Successfully logged out"
 }
 ```
+
+**Error Responses**:
+- `400 Bad Request`: Invalid token format
+- `401 Unauthorized`: Token has been revoked (already logged out)
 
 ---
 

@@ -19,6 +19,7 @@ The technology stack comprises FastAPI for the web framework, PostgreSQL for the
 - Full CRUD operations for astronomical pictures and user collections
 - Rich analytics capabilities including media distribution analysis, temporal trends, and keyword frequency analysis
 - JWT-based authentication with bcrypt password hashing (cost factor 12) for enhanced security
+- Token blacklist mechanism for logout protection (prevents duplicate logout with the same token)
 - User isolation ensuring complete separation of user data; users can only access their own collections
 - 27 RESTful API endpoints with comprehensive pagination support (configurable page sizes up to 100 items)
 - Advanced filtering and search capabilities for picture titles, descriptions, dates, and keywords
@@ -98,7 +99,7 @@ The APOD dataset is one of NASA's longest-running web features, curated by Dr. J
 
 3. **Many-to-Many Relationships:** Implemented association table with proper foreign key constraints and cascade delete rules for Collections ↔ Pictures relationship, ensuring referential integrity when collections or pictures are deleted.
 
-4. **JWT Authentication:** Used python-jose library with HS256 algorithm, bcrypt with cost factor 12, and proper token expiration handling with informative error messages for expired or invalid tokens.
+4. **JWT Authentication:** Used python-jose library with HS256 algorithm, bcrypt with cost factor 12, and proper token expiration handling with informative error messages for expired or invalid tokens. Implemented token blacklist mechanism for logout protection - each token includes a unique JTI (JWT ID), and revoked tokens are stored in database to prevent reuse.
 
 5. **User Isolation:** Added authorization checks at service layer verifying ownership before any modification operation, returning 403 Forbidden for unauthorized access attempts.
 
@@ -106,7 +107,7 @@ The APOD dataset is one of NASA's longest-running web features, curated by Dr. J
 
 ## 6. Limitations and Future Work
 
-**Current Limitations:** No caching layer; every request hits the database. SQL LIKE queries only; no fuzzy search capability. Stateless JWT tokens cannot be individually revoked before expiration. No rate limiting on API endpoints. Limited URL validation for stored media links.
+**Current Limitations:** No caching layer; every request hits the database. SQL LIKE queries only; no fuzzy search capability. Token blacklist stored in database (not Redis) for session invalidation. No rate limiting on API endpoints. Limited URL validation for stored media links.
 
 **Future Improvements:** Token refresh mechanism for extended sessions without re-authentication. Redis caching for analytics results and frequently accessed data to reduce database load. Elasticsearch integration for full-text search with fuzzy matching and autocomplete. WebSocket support for real-time features like live search suggestions. ML-based recommendation engine for personalized picture suggestions. Per-client rate limiting and API key management for abuse protection.
 

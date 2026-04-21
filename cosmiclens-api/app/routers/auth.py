@@ -16,6 +16,8 @@ from app.services.auth_service import (
     get_user_by_email,
     create_access_token,
     decode_access_token,
+    is_token_revoked,
+    revoke_token,
     ACCESS_TOKEN_EXPIRE_MINUTES
 )
 from app.models.user import User
@@ -35,21 +37,29 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
     token_data = decode_access_token(token)
-    if token_data is None or token_data.username is None:
+    if token_data is None or token_data.username is None or token_data.jti is None:
         raise credentials_exception
-    
+
+    # Check if token has been revoked
+    if is_token_revoked(db, token_data.jti):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token has been revoked. Please login again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     user = get_user_by_username(db, username=token_data.username)
     if user is None:
         raise credentials_exception
-    
+
     if not user.is_active:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Inactive user"
         )
-    
+
     return user
 
 
@@ -169,11 +179,34 @@ def get_current_user_info(current_user: User = Depends(get_current_user)):
 
 
 @router.post("/logout")
-def logout(current_user: User = Depends(get_current_user)):
+def logout(
+    token: str = Depends(oauth2_scheme),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     """
-    Logout current user (client should discard the token).
-    
-    Note: JWT tokens are stateless, so the server doesn't actually invalidate
-    the token. The client should remove the token from storage.
+    Logout current user by revoking their token.
+
+    The token will be added to a blacklist, preventing further use.
+    If the token has already been revoked, returns an error.
     """
+    token_data = decode_access_token(token)
+
+    if token_data is None or token_data.jti is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # Check if token is already revoked
+    if is_token_revoked(db, token_data.jti):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Already logged out"
+        )
+
+    # Revoke the token
+    revoke_token(db, token_data.jti)
+
     return {"message": "Successfully logged out"}

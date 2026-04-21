@@ -47,3 +47,4 @@ class Token(BaseModel):
 class TokenData(BaseModel):
     """Schema for token payload data"""
     username: Optional[str] = None
+    jti: Optional[str] = None
