@@ -195,7 +195,7 @@ pip install -r requirements.txt
 
 Detailed documentation available in `cosmiclens-api/docs/` and GitHub repository:
 - [API_DOCUMENTATION.pdf](https://github.com/lsyuan777777/Web_coursework_/blob/main/API_DOCUMENTATION.pdf) - Complete API reference
-- [CosmicLens-API_.pptx](https://github.com/lsyuan777777/Web_coursework_/blob/main/CosmicLens-API_.pptx) - Project presentation slides
+- https://github.com/lsyuan777777/Web_coursework_/blob/main/CosmicLens-API_.pptx - Project presentation slides
 - [TECHNICAL_REPORT.pdf](https://github.com/lsyuan777777/Web_coursework_/blob/main/TECHNICAL_REPORT.pdf) - Technical documentation
 
 ## License

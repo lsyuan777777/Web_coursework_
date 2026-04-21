@@ -133,7 +133,7 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 
 **Docker Deployment:** `docker-compose up -d` for containerized deployment.
 
-**Presentation:** [CosmicLens-API_.pptx](https://github.com/lsyuan777777/Web_coursework_/blob/main/CosmicLens-API_.pptx)
+**Presentation:** https://github.com/lsyuan777777/Web_coursework_/blob/main/CosmicLens-API_.pptx
 
 **Repository:** https://github.com/lsyuan777777/Web_coursework_
 
