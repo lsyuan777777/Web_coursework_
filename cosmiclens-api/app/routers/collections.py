@@ -2,7 +2,7 @@
 Collections API endpoints - CRUD operations for user collections
 Implements user isolation - each user has their own private collections
 """
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Header
 from sqlalchemy.orm import Session
 from datetime import datetime
 from typing import Optional
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/collections", tags=["Collections"])
 
 
 async def get_optional_user(
-    authorization: Optional[str] = None,
+    authorization: Optional[str] = Header(None),
     db: Session = Depends(get_db)
 ) -> Optional[User]:
     """Get current user if authenticated, otherwise None"""
@@ -38,7 +38,6 @@ async def get_optional_user(
         if scheme.lower() != "bearer":
             return None
 
-        from app.services.auth_service import decode_access_token
         token_data = decode_access_token(token)
         if token_data is None or token_data.username is None:
             return None
