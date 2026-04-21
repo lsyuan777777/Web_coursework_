@@ -11,7 +11,7 @@ import uvicorn
 
 from app.config import settings
 from app.database import init_database
-from app.routers import pictures_router, collections_router, analytics_router
+from app.routers import pictures_router, collections_router, analytics_router, auth_router
 
 # Create FastAPI application
 app = FastAPI(
@@ -27,6 +27,7 @@ app = FastAPI(
     * **Collections**: Create and manage personal collections of favorite astronomy pictures
     * **Analytics**: Statistics, trends, and insights from the APOD dataset
     * **Search**: Advanced filtering and search capabilities
+    * **Authentication**: User registration and login with JWT tokens
 
     ### Dataset
 
@@ -81,6 +82,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.include_router(pictures_router, prefix=settings.API_V1_PREFIX)
 app.include_router(collections_router, prefix=settings.API_V1_PREFIX)
 app.include_router(analytics_router, prefix=settings.API_V1_PREFIX)
+app.include_router(auth_router, prefix=settings.API_V1_PREFIX)
 
 
 @app.on_event("startup")
@@ -104,7 +106,8 @@ async def root():
         "endpoints": {
             "pictures": f"{settings.API_V1_PREFIX}/pictures",
             "collections": f"{settings.API_V1_PREFIX}/collections",
-            "analytics": f"{settings.API_V1_PREFIX}/analytics"
+            "analytics": f"{settings.API_V1_PREFIX}/analytics",
+            "auth": f"{settings.API_V1_PREFIX}/auth"
         },
         "dataset_source": "https://www.kaggle.com/datasets/ahsanneural/nasa-astronomy-picture-of-the-day-1995-2026"
     }

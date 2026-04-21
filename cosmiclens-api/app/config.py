@@ -2,6 +2,7 @@
 Application configuration settings
 """
 import os
+import secrets
 from dotenv import load_dotenv
 from pathlib import Path
 
@@ -11,6 +12,10 @@ class Settings:
     PROJECT_NAME: str = "CosmicLens API"
     PROJECT_VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
+
+    # Security settings
+    SECRET_KEY: str = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080"))  # 7 days in minutes
 
     # Database type: 'sqlite' or 'postgresql'
     DATABASE_TYPE: str = os.getenv("DATABASE_TYPE", "sqlite")

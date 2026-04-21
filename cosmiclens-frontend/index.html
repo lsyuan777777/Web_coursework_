@@ -863,6 +863,27 @@
                         Collections
                     </button>
                 </div>
+                <div id="authSection">
+                    <button class="btn" id="loginBtn" onclick="openAuthModal('login')">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                            <polyline points="10 17 15 12 10 7"/>
+                            <line x1="15" y1="12" x2="3" y2="12"/>
+                        </svg>
+                        Login
+                    </button>
+                    <div id="userInfo" style="display: none; align-items: center; gap: 0.5rem;">
+                        <span id="usernameDisplay" style="font-size: 0.875rem; color: var(--text-secondary);"></span>
+                        <button class="btn btn-secondary" id="logoutBtn" onclick="logout()">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                <polyline points="16 17 21 12 16 7"/>
+                                <line x1="21" y1="12" x2="9" y2="12"/>
+                            </svg>
+                            Logout
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </nav>
@@ -1022,6 +1043,74 @@
         </div>
     </div>
 
+    <!-- Auth Modal (Login/Register) -->
+    <div class="modal-overlay" id="authModal">
+        <div class="modal" style="max-width: 420px;">
+            <div class="modal-header" style="padding: 1.5rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+                <h2 id="authModalTitle" style="font-size: 1.25rem; font-weight: 600; margin: 0;">Login</h2>
+                <button class="modal-close" onclick="closeAuthModal()" style="position: static; background: var(--bg-hover); width: 36px; height: 36px; font-size: 1.5rem;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Login Form -->
+                <form id="loginForm" onsubmit="handleLogin(event)">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-input" id="loginUsername" placeholder="Enter your username" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-input" id="loginPassword" placeholder="Enter your password" required>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%; justify-content: center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+                            <polyline points="10 17 15 12 10 7"/>
+                            <line x1="15" y1="12" x2="3" y2="12"/>
+                        </svg>
+                        Login
+                    </button>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+                        Don't have an account? 
+                        <a href="#" onclick="switchAuthMode('register'); return false;" style="color: var(--accent); text-decoration: none;">Register</a>
+                    </p>
+                </form>
+
+                <!-- Register Form -->
+                <form id="registerForm" style="display: none;" onsubmit="handleRegister(event)">
+                    <div class="form-group">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-input" id="registerUsername" placeholder="Choose a username (3-50 characters)" required minlength="3" maxlength="50">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-input" id="registerEmail" placeholder="Enter your email" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-input" id="registerPassword" placeholder="Create a password (min 6 characters)" required minlength="6">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Confirm Password</label>
+                        <input type="password" class="form-input" id="registerConfirmPassword" placeholder="Confirm your password" required>
+                    </div>
+                    <button type="submit" class="btn" style="width: 100%; justify-content: center;">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="8.5" cy="7" r="4"/>
+                            <line x1="20" y1="8" x2="20" y2="14"/>
+                            <line x1="23" y1="11" x2="17" y2="11"/>
+                        </svg>
+                        Create Account
+                    </button>
+                    <p style="text-align: center; margin-top: 1rem; font-size: 0.875rem; color: var(--text-secondary);">
+                        Already have an account? 
+                        <a href="#" onclick="switchAuthMode('login'); return false;" style="color: var(--accent); text-decoration: none;">Login</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast" id="toast"></div>
 
@@ -1037,6 +1126,10 @@
         let collections = [];
         let currentCollectionView = null; // null = collections list, id = viewing specific collection
         let selectedCollectionId = null;
+
+        // Auth State
+        let currentUser = null;
+        let authToken = localStorage.getItem('auth_token');
 
         // DOM Elements
         const galleryGrid = document.getElementById('galleryGrid');
@@ -1061,6 +1154,7 @@
             loadPictures();
             loadCollections();
             setupEventListeners();
+            checkAuthStatus();
         });
 
         // Check API connection
@@ -1097,11 +1191,30 @@
         }
 
         // API Functions
-        async function fetchAPI(endpoint) {
+        async function fetchAPI(endpoint, options = {}) {
             try {
                 console.log('Fetching:', `${API_BASE}${endpoint}`);
-                const response = await fetch(`${API_BASE}${endpoint}`);
-                if (!response.ok) throw new Error(`API error: ${response.status}`);
+                const headers = {
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+
+                // Add auth token if available
+                const token = localStorage.getItem('auth_token');
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    ...options,
+                    headers
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.detail || `API error: ${response.status}`);
+                }
+
                 const data = await response.json();
                 console.log('API Response:', data);
                 return data;
@@ -1110,6 +1223,178 @@
                 showToast('Failed to connect to API. Make sure the server is running on port 8000.', 'error');
                 return null;
             }
+        }
+
+        // Auth Functions
+        function getAuthHeaders() {
+            const token = localStorage.getItem('auth_token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token) {
+                headers['Authorization'] = `Bearer ${token}`;
+            }
+            return headers;
+        }
+
+        async function checkAuthStatus() {
+            const token = localStorage.getItem('auth_token');
+            const userData = localStorage.getItem('user_data');
+
+            if (token && userData) {
+                try {
+                    const response = await fetch(`${API_BASE}/auth/me`, {
+                        headers: getAuthHeaders()
+                    });
+                    if (response.ok) {
+                        const user = await response.json();
+                        currentUser = user;
+                        updateAuthUI(user);
+                    } else {
+                        logout();
+                    }
+                } catch (error) {
+                    console.error('Auth check failed:', error);
+                }
+            }
+        }
+
+        function updateAuthUI(user) {
+            const loginBtn = document.getElementById('loginBtn');
+            const userInfo = document.getElementById('userInfo');
+            const usernameDisplay = document.getElementById('usernameDisplay');
+
+            if (user) {
+                loginBtn.style.display = 'none';
+                userInfo.style.display = 'flex';
+                usernameDisplay.textContent = user.username;
+            } else {
+                loginBtn.style.display = 'flex';
+                userInfo.style.display = 'none';
+            }
+        }
+
+        function openAuthModal(mode = 'login') {
+            // Check if already logged in
+            if (currentUser) {
+                showToast('You are already logged in.', 'error');
+                return;
+            }
+            switchAuthMode(mode);
+            document.getElementById('authModal').classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAuthModal() {
+            document.getElementById('authModal').classList.remove('active');
+            document.body.style.overflow = '';
+            // Clear forms
+            document.getElementById('loginForm').reset();
+            document.getElementById('registerForm').reset();
+        }
+
+        function switchAuthMode(mode) {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const modalTitle = document.getElementById('authModalTitle');
+
+            if (mode === 'login') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                modalTitle.textContent = 'Login';
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                modalTitle.textContent = 'Register';
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const formData = new FormData();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('auth_token', data.access_token);
+
+                    // Fetch user info
+                    const userResponse = await fetch(`${API_BASE}/auth/me`, {
+                        headers: getAuthHeaders()
+                    });
+                    if (userResponse.ok) {
+                        const user = await userResponse.json();
+                        localStorage.setItem('user_data', JSON.stringify(user));
+                        currentUser = user;
+                        updateAuthUI(user);
+                    }
+
+                    closeAuthModal();
+                    showToast('Login successful! Welcome back!');
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Login failed. Please check your credentials.', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast('Login failed. Please try again.', 'error');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, password })
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    showToast('Registration successful! Please login.');
+                    switchAuthMode('login');
+                    document.getElementById('loginUsername').value = username;
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Registration failed. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showToast('Registration failed. Please try again.', 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_data');
+            currentUser = null;
+            authToken = null;
+            updateAuthUI(null);
+            showToast('Logged out successfully.');
         }
 
         async function loadStats() {
@@ -1304,6 +1589,12 @@
         }
 
         function showCreateCollectionForm() {
+            if (!currentUser) {
+                showToast('Please login first', 'error');
+                openAuthModal();
+                return;
+            }
+
             const content = document.getElementById('collectionsContent');
             content.innerHTML = `
                 <button class="back-to-collections" onclick="backToCollections()">
@@ -1330,6 +1621,11 @@
         }
 
         async function createCollection() {
+            if (!currentUser) {
+                showToast('Please login first', 'error');
+                return;
+            }
+
             const name = document.getElementById('newCollectionName').value.trim();
             const description = document.getElementById('newCollectionDesc').value.trim();
 
@@ -1339,9 +1635,8 @@
             }
 
             try {
-                const response = await fetch(`${API_BASE}/collections`, {
+                const data = await fetchAPI('/collections', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         name,
                         description: description || '',
@@ -1349,12 +1644,10 @@
                     })
                 });
 
-                if (response.ok) {
+                if (data) {
                     showToast('Collection created!');
                     await loadCollections();
                     backToCollections();
-                } else {
-                    showToast('Failed to create collection', 'error');
                 }
             } catch (error) {
                 showToast('Error creating collection', 'error');
@@ -1447,17 +1740,13 @@
             if (!confirm('Remove this picture from collection?')) return;
 
             try {
-                const response = await fetch(`${API_BASE}/collections/${collectionId}/pictures/${pictureId}`, {
+                const data = await fetchAPI(`/collections/${collectionId}/pictures/${pictureId}`, {
                     method: 'DELETE'
                 });
 
-                if (response.ok || response.status === 204) {
-                    showToast('Picture removed from collection');
-                    await loadCollections();
-                    renderCollectionContent();
-                } else {
-                    showToast('Failed to remove picture', 'error');
-                }
+                showToast('Picture removed from collection');
+                await loadCollections();
+                renderCollectionContent();
             } catch (error) {
                 showToast('Error removing picture', 'error');
             }
@@ -1467,17 +1756,13 @@
             if (!confirm('Delete this collection? Pictures will not be deleted.')) return;
 
             try {
-                const response = await fetch(`${API_BASE}/collections/${collectionId}`, {
+                const data = await fetchAPI(`/collections/${collectionId}`, {
                     method: 'DELETE'
                 });
 
-                if (response.ok || response.status === 204) {
-                    showToast('Collection deleted');
-                    await loadCollections();
-                    backToCollections();
-                } else {
-                    showToast('Failed to delete collection', 'error');
-                }
+                showToast('Collection deleted');
+                await loadCollections();
+                backToCollections();
             } catch (error) {
                 showToast('Error deleting collection', 'error');
             }
@@ -1500,6 +1785,18 @@
 
         function renderCollectionOptions() {
             const container = document.getElementById('collectionOptions');
+
+            if (!currentUser) {
+                container.innerHTML = `
+                    <p style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                        Please login to use collections<br>
+                        <button class="btn" style="margin-top: 1rem;" onclick="closeSelectCollectionModal(); openAuthModal();">
+                            Login
+                        </button>
+                    </p>
+                `;
+                return;
+            }
 
             if (collections.length === 0) {
                 container.innerHTML = `
@@ -1534,23 +1831,21 @@
 
         async function confirmAddToCollection() {
             if (!selectedPicture || !selectedCollectionId) return;
+            if (!currentUser) {
+                showToast('Please login first', 'error');
+                return;
+            }
 
             try {
-                const response = await fetch(`${API_BASE}/collections/${selectedCollectionId}/pictures`, {
+                const data = await fetchAPI(`/collections/${selectedCollectionId}/pictures`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ picture_id: selectedPicture.id })
                 });
 
-                if (response.ok) {
-                    const collection = collections.find(c => c.id === selectedCollectionId);
-                    showToast(`Added to "${collection?.name || 'collection'}"!`);
-                    await loadCollections();
-                    closeSelectCollectionModal();
-                } else {
-                    const error = await response.json();
-                    showToast(error.detail || 'Failed to add to collection', 'error');
-                }
+                const collection = collections.find(c => c.id === selectedCollectionId);
+                showToast(`Added to "${collection?.name || 'collection'}"!`);
+                await loadCollections();
+                closeSelectCollectionModal();
             } catch (error) {
                 showToast('Error adding to collection', 'error');
             }
@@ -1705,6 +2000,193 @@
             document.getElementById('backFromCollectionBtn').style.display = 'none';
             document.getElementById('searchSection').querySelector('.search-container').style.display = 'flex';
             loadPictures(1);
+        }
+
+        // ==================== Authentication Functions ====================
+
+        function checkAuthStatus() {
+            const token = localStorage.getItem('auth_token');
+            const username = localStorage.getItem('username');
+            
+            if (token && username) {
+                authToken = token;
+                currentUser = { username: username };
+                updateAuthUI(true, username);
+            } else {
+                updateAuthUI(false);
+            }
+        }
+
+        function updateAuthUI(isLoggedIn, username = '') {
+            const loginBtn = document.getElementById('loginBtn');
+            const userInfo = document.getElementById('userInfo');
+            const usernameDisplay = document.getElementById('usernameDisplay');
+
+            if (isLoggedIn) {
+                loginBtn.style.display = 'none';
+                userInfo.style.display = 'flex';
+                usernameDisplay.textContent = `Welcome, ${username}`;
+            } else {
+                loginBtn.style.display = 'flex';
+                userInfo.style.display = 'none';
+                usernameDisplay.textContent = '';
+            }
+        }
+
+        function openAuthModal(mode = 'login') {
+            const modal = document.getElementById('authModal');
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const title = document.getElementById('authModalTitle');
+
+            if (mode === 'login') {
+                loginForm.style.display = 'block';
+                registerForm.style.display = 'none';
+                title.textContent = 'Login';
+            } else {
+                loginForm.style.display = 'none';
+                registerForm.style.display = 'block';
+                title.textContent = 'Create Account';
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAuthModal() {
+            const modal = document.getElementById('authModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+
+            // Clear forms
+            document.getElementById('loginForm').reset();
+            document.getElementById('registerForm').reset();
+        }
+
+        function switchAuthMode(mode) {
+            openAuthModal(mode);
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('auth_token', data.access_token);
+                    localStorage.setItem('username', username);
+                    authToken = data.access_token;
+                    currentUser = { username: username };
+                    updateAuthUI(true, username);
+                    closeAuthModal();
+                    showToast('Login successful!', 'success');
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Login failed. Please check your credentials.', 'error');
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                showToast('Login failed. Please try again.', 'error');
+            }
+        }
+
+        async function handleRegister(event) {
+            event.preventDefault();
+
+            const username = document.getElementById('registerUsername').value;
+            const email = document.getElementById('registerEmail').value;
+            const password = document.getElementById('registerPassword').value;
+            const confirmPassword = document.getElementById('registerConfirmPassword').value;
+
+            // Validate passwords match
+            if (password !== confirmPassword) {
+                showToast('Passwords do not match!', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/auth/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        username: username,
+                        email: email,
+                        password: password
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showToast('Account created successfully! Please login.', 'success');
+                    // Switch to login form
+                    switchAuthMode('login');
+                    document.getElementById('loginUsername').value = username;
+                } else {
+                    const error = await response.json();
+                    showToast(error.detail || 'Registration failed. Please try again.', 'error');
+                }
+            } catch (error) {
+                console.error('Registration error:', error);
+                showToast('Registration failed. Please try again.', 'error');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('username');
+            authToken = null;
+            currentUser = null;
+            updateAuthUI(false);
+            showToast('Logged out successfully!', 'success');
+        }
+
+        // Helper function for authenticated API calls
+        async function fetchAuthenticatedAPI(endpoint, options = {}) {
+            const token = localStorage.getItem('auth_token');
+            if (!token) {
+                showToast('Please login to continue.', 'error');
+                openAuthModal('login');
+                return null;
+            }
+
+            const defaultOptions = {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    ...options.headers
+                }
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}${endpoint}`, {
+                    ...defaultOptions,
+                    ...options
+                });
+
+                if (response.status === 401) {
+                    logout();
+                    showToast('Session expired. Please login again.', 'error');
+                    return null;
+                }
+
+                return response;
+            } catch (error) {
+                console.error('API Error:', error);
+                showToast('Failed to connect to API.', 'error');
+                return null;
+            }
         }
     </script>
 </body>

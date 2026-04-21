@@ -1,13 +1,16 @@
 """
 Collections API endpoints - CRUD operations for user collections
+Implements user isolation - each user has their own private collections
 """
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import datetime
+from typing import Optional
 
 from app.database import get_db
 from app.models.collection import Collection, collection_pictures
 from app.models.astronomy_picture import AstronomyPicture
+from app.models.user import User
 from app.schemas.collection import (
     CollectionCreate,
     CollectionUpdate,
@@ -17,8 +20,45 @@ from app.schemas.collection import (
     CollectionPictureSummary,
     AddPictureToCollection
 )
+from app.services.auth_service import decode_access_token
 
 router = APIRouter(prefix="/collections", tags=["Collections"])
+
+
+async def get_optional_user(
+    authorization: Optional[str] = None,
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """Get current user if authenticated, otherwise None"""
+    if not authorization:
+        return None
+
+    try:
+        scheme, token = authorization.split()
+        if scheme.lower() != "bearer":
+            return None
+
+        from app.services.auth_service import decode_access_token
+        token_data = decode_access_token(token)
+        if token_data is None or token_data.username is None:
+            return None
+
+        user = db.query(User).filter(User.username == token_data.username).first()
+        if user is None or not user.is_active:
+            return None
+
+        return user
+    except (ValueError, AttributeError):
+        return None
+
+
+def check_collection_access(collection: Collection, user: Optional[User], allow_public: bool = True) -> bool:
+    """Check if user has access to the collection"""
+    if user and collection.user_id == user.id:
+        return True
+    if allow_public and collection.is_public == 1:
+        return True
+    return False
 
 
 @router.get("", response_model=CollectionListResponse)
@@ -26,18 +66,29 @@ def list_collections(
     page: int = Query(1, ge=1),
     page_size: int = Query(20, ge=1, le=100),
     public_only: bool = Query(False, description="Only show public collections"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
-    List all collections with pagination.
+    List collections with pagination.
 
     - **page**: Page number (default: 1)
     - **page_size**: Items per page (default: 20)
     - **public_only**: Filter to show only public collections
+
+    Note: When authenticated, returns only the user's own collections.
+    When not authenticated, returns only public collections.
     """
     query = db.query(Collection)
 
-    if public_only:
+    if current_user:
+        # Authenticated users see only their own collections
+        query = query.filter(Collection.user_id == current_user.id)
+
+        if public_only:
+            query = query.filter(Collection.is_public == 1)
+    else:
+        # Unauthenticated users can only see public collections
         query = query.filter(Collection.is_public == 1)
 
     total = query.count()
@@ -57,15 +108,28 @@ def list_collections(
 
 
 @router.get("/{collection_id}", response_model=CollectionDetailResponse)
-def get_collection(collection_id: int, db: Session = Depends(get_db)):
+def get_collection(
+    collection_id: int,
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
+):
     """
     Get a specific collection with its pictures.
 
     - **collection_id**: Unique identifier of the collection
+
+    Users can only access their own collections or public collections.
     """
     collection = db.query(Collection).filter(Collection.id == collection_id).first()
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
+
+    # Check access permission
+    if not check_collection_access(collection, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. You can only view your own collections or public collections."
+        )
 
     # Get picture summaries
     picture_links = db.query(collection_pictures).filter(
@@ -98,18 +162,31 @@ def get_collection(collection_id: int, db: Session = Depends(get_db)):
 
 
 @router.post("", response_model=CollectionResponse, status_code=201)
-def create_collection(collection_data: CollectionCreate, db: Session = Depends(get_db)):
+def create_collection(
+    collection_data: CollectionCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_optional_user)
+):
     """
     Create a new collection.
 
     - **name**: Collection name (required)
     - **description**: Collection description
-    - **is_public**: Whether collection is public (default: true)
+    - **is_public**: Whether collection is public (default: false - private)
+
+    Note: Authentication required. Collections are automatically assigned to the current user.
     """
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to create collections"
+        )
+
     db_collection = Collection(
         name=collection_data.name,
         description=collection_data.description,
-        is_public=1 if collection_data.is_public else 0
+        is_public=1 if collection_data.is_public else 0,
+        user_id=current_user.id
     )
 
     db.add(db_collection)
@@ -123,16 +200,32 @@ def create_collection(collection_data: CollectionCreate, db: Session = Depends(g
 def update_collection(
     collection_id: int,
     collection_update: CollectionUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_optional_user)
 ):
     """
     Update an existing collection.
 
     - **collection_id**: ID of the collection to update
+
+    Note: You can only update your own collections.
     """
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to update collections"
+        )
+
     db_collection = db.query(Collection).filter(Collection.id == collection_id).first()
     if not db_collection:
         raise HTTPException(status_code=404, detail="Collection not found")
+
+    # Check ownership
+    if db_collection.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. You can only update your own collections."
+        )
 
     update_data = collection_update.model_dump(exclude_unset=True)
 
@@ -151,15 +244,34 @@ def update_collection(
 
 
 @router.delete("/{collection_id}", status_code=204)
-def delete_collection(collection_id: int, db: Session = Depends(get_db)):
+def delete_collection(
+    collection_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_optional_user)
+):
     """
     Delete a collection.
 
     - **collection_id**: ID of the collection to delete
+
+    Note: You can only delete your own collections.
     """
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to delete collections"
+        )
+
     db_collection = db.query(Collection).filter(Collection.id == collection_id).first()
     if not db_collection:
         raise HTTPException(status_code=404, detail="Collection not found")
+
+    # Check ownership
+    if db_collection.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. You can only delete your own collections."
+        )
 
     db.delete(db_collection)
     db.commit()
@@ -171,18 +283,34 @@ def delete_collection(collection_id: int, db: Session = Depends(get_db)):
 def add_picture_to_collection(
     collection_id: int,
     picture_data: AddPictureToCollection,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_optional_user)
 ):
     """
     Add a picture to a collection.
 
     - **collection_id**: ID of the collection
     - **picture_id**: ID of the picture to add
+
+    Note: You can only add pictures to your own collections.
     """
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to add pictures to collections"
+        )
+
     # Verify collection exists
     collection = db.query(Collection).filter(Collection.id == collection_id).first()
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
+
+    # Check ownership
+    if collection.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. You can only add pictures to your own collections."
+        )
 
     # Verify picture exists
     picture = db.query(AstronomyPicture).filter(
@@ -225,18 +353,34 @@ def add_picture_to_collection(
 def remove_picture_from_collection(
     collection_id: int,
     picture_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_optional_user)
 ):
     """
     Remove a picture from a collection.
 
     - **collection_id**: ID of the collection
     - **picture_id**: ID of the picture to remove
+
+    Note: You can only remove pictures from your own collections.
     """
+    if not current_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Authentication required to remove pictures from collections"
+        )
+
     # Verify collection exists
     collection = db.query(Collection).filter(Collection.id == collection_id).first()
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
+
+    # Check ownership
+    if collection.user_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. You can only remove pictures from your own collections."
+        )
 
     # Remove from collection
     result = db.execute(
@@ -266,16 +410,26 @@ def remove_picture_from_collection(
 @router.get("/{collection_id}/pictures", response_model=list[CollectionPictureSummary])
 def get_collection_pictures(
     collection_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_user)
 ):
     """
     Get all pictures in a collection.
 
     - **collection_id**: ID of the collection
+
+    Users can only access pictures from their own collections or public collections.
     """
     collection = db.query(Collection).filter(Collection.id == collection_id).first()
     if not collection:
         raise HTTPException(status_code=404, detail="Collection not found")
+
+    # Check access permission
+    if not check_collection_access(collection, current_user):
+        raise HTTPException(
+            status_code=403,
+            detail="Access denied. You can only view pictures from your own collections or public collections."
+        )
 
     picture_links = db.query(collection_pictures).filter(
         collection_pictures.c.collection_id == collection_id

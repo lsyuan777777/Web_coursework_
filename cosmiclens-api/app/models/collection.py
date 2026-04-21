@@ -22,18 +22,24 @@ class Collection(Base):
 
     Allows users to organize astronomy pictures into themed collections
     with optional descriptions and public/private visibility.
+
+    Each collection belongs to a specific user and is isolated to that user.
     """
     __tablename__ = "collections"
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(200), nullable=False, index=True)
     description = Column(Text)
-    is_public = Column(Integer, default=1)  # 1 = public, 0 = private
+    is_public = Column(Integer, default=0)  # 0 = private (user only), 1 = public
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     picture_count = Column(Integer, default=0)
 
+    # User relationship for isolation
+    user_id = Column(Integer, ForeignKey('users.id', ondelete='CASCADE'), nullable=False, index=True)
+
     # Relationships
+    user = relationship("User", back_populates="collections")
     pictures = relationship(
         "AstronomyPicture",
         secondary=collection_pictures,
@@ -42,4 +48,4 @@ class Collection(Base):
     )
 
     def __repr__(self):
-        return f"<Collection(id={self.id}, name='{self.name}', picture_count={self.picture_count})>"
+        return f"<Collection(id={self.id}, name='{self.name}', user_id={self.user_id}, picture_count={self.picture_count})>"
