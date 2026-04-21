@@ -129,7 +129,7 @@ python -m app.scripts.init_db
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**API Documentation:** Swagger UI at http://localhost:8000/docs (interactive exploration), ReDoc at http://localhost:8000/redoc (clean documentation view), and [API_DOCUMENTATION.pdf](https://github.com/lsyuan777777/Web_coursework_/blob/main/API_DOCUMENTATION.pdf).
+**API Documentation:** Swagger UI at http://localhost:8000/docs (interactive exploration), ReDoc at http://localhost:8000/redoc (clean documentation view), and https://github.com/lsyuan777777/Web_coursework_/blob/main/API_DOCUMENTATION.pdf.
 
 **Docker Deployment:** `docker-compose up -d` for containerized deployment.
 
